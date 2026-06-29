@@ -5,10 +5,9 @@ import { Calculator, Save } from "lucide-react";
 import {
   getActivityLabel,
   getCalorieRecommendation,
-  isMaintainingWeight,
 } from "@/lib/nutrition";
 import { feetInchesToInches, inchesToFeetInches } from "@/lib/units";
-import type { ActivityLevel, Gender, UserProfile } from "@/lib/types";
+import type { ActivityLevel, Gender, GoalMode, UserProfile } from "@/lib/types";
 import { GoalSelector } from "./GoalSelector";
 import { NumberField } from "./NumberField";
 
@@ -28,6 +27,7 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
   const [inches, setInches] = useState(initInches);
   const [weightLbs, setWeightLbs] = useState(profile.weightLbs);
   const [activityLevel, setActivityLevel] = useState(profile.activityLevel);
+  const [goalMode, setGoalMode] = useState<GoalMode>(profile.goalMode);
   const [lbsPerWeek, setLbsPerWeek] = useState(profile.lbsPerWeek);
   const [saved, setSaved] = useState(false);
 
@@ -38,18 +38,17 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
       age,
       gender,
       activityLevel,
+      goalMode,
       lbsPerWeek,
       onboardingComplete: true,
     }),
-    [feet, inches, weightLbs, age, gender, activityLevel, lbsPerWeek]
+    [feet, inches, weightLbs, age, gender, activityLevel, goalMode, lbsPerWeek]
   );
 
   const recommendation = useMemo(
     () => getCalorieRecommendation(draftProfile),
     [draftProfile]
   );
-
-  const maintaining = isMaintainingWeight(lbsPerWeek);
 
   const handleSave = () => {
     onSave(draftProfile);
@@ -88,16 +87,26 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
       unit: "g",
       color: "text-emerald-600",
     },
-    ...(maintaining
-      ? []
-      : [
+    ...(goalMode === "lose"
+      ? [
           {
             label: "Deficit",
             value: recommendation.deficit,
             unit: "kcal",
             color: "text-brand-600",
           },
-        ]),
+        ]
+      : []),
+    ...(goalMode === "bulk"
+      ? [
+          {
+            label: "Surplus",
+            value: recommendation.surplus,
+            unit: "kcal",
+            color: "text-brand-600",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -195,9 +204,13 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
           <div className="sm:col-span-2">
             <label className="label">Your Goal</label>
             <GoalSelector
+              goalMode={goalMode}
               lbsPerWeek={lbsPerWeek}
               recommendation={recommendation}
-              onChange={setLbsPerWeek}
+              onChange={(mode, lbs) => {
+                setGoalMode(mode);
+                setLbsPerWeek(lbs);
+              }}
               compact
             />
           </div>
@@ -230,13 +243,22 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
           ))}
         </div>
         <p className="border-t border-slate-100 px-5 py-4 text-sm text-slate-500">
-          {maintaining ? (
+          {goalMode === "maintain" ? (
             <>
               Eating{" "}
               <strong className="text-brand-700">
                 {recommendation.targetCalories} kcal/day
               </strong>{" "}
               maintains your weight while you track macros.
+            </>
+          ) : goalMode === "bulk" ? (
+            <>
+              Eating{" "}
+              <strong className="text-brand-700">
+                {recommendation.targetCalories} kcal/day
+              </strong>{" "}
+              supports gaining{" "}
+              <strong className="text-brand-700">{lbsPerWeek} lb/week</strong>.
             </>
           ) : (
             <>

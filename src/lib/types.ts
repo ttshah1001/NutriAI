@@ -26,12 +26,15 @@ export type ActivityLevel =
 
 export type Gender = "male" | "female";
 
+export type GoalMode = "lose" | "maintain" | "bulk";
+
 export interface UserProfile {
   heightInches: number;
   weightLbs: number;
   age: number;
   gender: Gender;
   activityLevel: ActivityLevel;
+  goalMode: GoalMode;
   lbsPerWeek: number;
   onboardingComplete: boolean;
 }
@@ -40,7 +43,9 @@ export interface CalorieRecommendation extends NutritionValues {
   bmr: number;
   tdee: number;
   targetCalories: number;
+  goalMode: GoalMode;
   deficit: number;
+  surplus: number;
   lbsPerWeek: number;
 }
 

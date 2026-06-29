@@ -1,6 +1,7 @@
 import type {
   ActivityLevel,
   CalorieRecommendation,
+  GoalMode,
   NutritionValues,
   UserProfile,
 } from "./types";
@@ -32,13 +33,20 @@ export function calculateTDEE(profile: UserProfile): number {
   return bmr * ACTIVITY_MULTIPLIERS[profile.activityLevel];
 }
 
-export function getDailyDeficit(lbsPerWeek: number): number {
+export function getDailyCalorieAdjustment(lbsPerWeek: number): number {
   if (lbsPerWeek <= 0) return 0;
   return Math.round((lbsPerWeek * CALORIES_PER_LB) / 7);
 }
 
-export function isMaintainingWeight(lbsPerWeek: number): boolean {
-  return lbsPerWeek <= 0;
+export function inferGoalMode(
+  raw: Record<string, unknown>
+): GoalMode {
+  if (raw.goalMode === "lose" || raw.goalMode === "maintain" || raw.goalMode === "bulk") {
+    return raw.goalMode;
+  }
+  const lbs = Number(raw.lbsPerWeek ?? 0);
+  if (lbs > 0) return "lose";
+  return "maintain";
 }
 
 export function getCalorieRecommendation(
@@ -46,13 +54,27 @@ export function getCalorieRecommendation(
 ): CalorieRecommendation {
   const bmr = calculateBMR(profile);
   const tdee = calculateTDEE(profile);
-  const maintaining = isMaintainingWeight(profile.lbsPerWeek);
-  const deficit = getDailyDeficit(profile.lbsPerWeek);
-  const targetCalories = maintaining
-    ? Math.round(tdee)
-    : Math.max(tdee - deficit, bmr * 1.1);
+  const adjustment = getDailyCalorieAdjustment(profile.lbsPerWeek);
 
-  const proteinPerKg = profile.lbsPerWeek > 0 ? 2.0 : 1.6;
+  let targetCalories: number;
+  let deficit = 0;
+  let surplus = 0;
+
+  switch (profile.goalMode) {
+    case "bulk":
+      surplus = adjustment || 300;
+      targetCalories = tdee + surplus;
+      break;
+    case "lose":
+      deficit = adjustment || 500;
+      targetCalories = Math.max(tdee - deficit, bmr * 1.1);
+      break;
+    default:
+      targetCalories = tdee;
+  }
+
+  const proteinPerKg =
+    profile.goalMode === "lose" ? 2.0 : profile.goalMode === "bulk" ? 2.2 : 1.6;
   const protein = Math.round(lbsToKg(profile.weightLbs) * proteinPerKg);
   const fat = Math.round((targetCalories * 0.25) / 9);
   const fiber = profile.gender === "male" ? 38 : 25;
@@ -64,7 +86,9 @@ export function getCalorieRecommendation(
     bmr: Math.round(bmr),
     tdee: Math.round(tdee),
     targetCalories: Math.round(targetCalories),
+    goalMode: profile.goalMode,
     deficit,
+    surplus,
     lbsPerWeek: profile.lbsPerWeek,
     calories: Math.round(targetCalories),
     protein,
@@ -110,4 +134,13 @@ export function getActivityLabel(level: ActivityLevel): string {
     very_active: "Very Active (athlete/physical job)",
   };
   return labels[level];
+}
+
+export function getGoalLabel(goalMode: GoalMode): string {
+  const labels: Record<GoalMode, string> = {
+    lose: "Lose weight",
+    maintain: "Maintain weight",
+    bulk: "Bulk up",
+  };
+  return labels[goalMode];
 }

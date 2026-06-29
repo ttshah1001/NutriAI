@@ -1,3 +1,4 @@
+import { inferGoalMode } from "./nutrition";
 import type { FoodEntry, UserProfile } from "./types";
 
 const ENTRIES_KEY = "calorie-tracker-entries";
@@ -9,19 +10,31 @@ export const EMPTY_PROFILE: UserProfile = {
   age: 30,
   gender: "male",
   activityLevel: "moderate",
+  goalMode: "lose",
   lbsPerWeek: 1,
   onboardingComplete: false,
 };
 
 function migrateProfile(raw: Record<string, unknown>): UserProfile {
   if (raw.onboardingComplete !== undefined && raw.heightInches !== undefined) {
-    return { ...EMPTY_PROFILE, ...raw } as UserProfile;
+    const goalMode = inferGoalMode(raw);
+    return {
+      ...EMPTY_PROFILE,
+      ...raw,
+      goalMode,
+      lbsPerWeek:
+        goalMode === "maintain"
+          ? 0
+          : Number(raw.lbsPerWeek ?? (goalMode === "bulk" ? 0.5 : 1)),
+    } as UserProfile;
   }
 
   // Migrate old metric profile format
   const heightCm = Number(raw.heightCm ?? 170);
   const weightKg = Number(raw.weightKg ?? 70);
   const goal = raw.goal as string | undefined;
+  const goalMode =
+    goal === "gain" ? "bulk" : goal === "lose" ? "lose" : "maintain";
 
   return {
     heightInches: Math.round(heightCm / 2.54),
@@ -30,7 +43,9 @@ function migrateProfile(raw: Record<string, unknown>): UserProfile {
     gender: (raw.gender as UserProfile["gender"]) ?? "male",
     activityLevel:
       (raw.activityLevel as UserProfile["activityLevel"]) ?? "moderate",
-    lbsPerWeek: goal === "lose" ? 1 : 0,
+    goalMode,
+    lbsPerWeek:
+      goalMode === "maintain" ? 0 : goalMode === "bulk" ? 0.5 : 1,
     onboardingComplete: Boolean(raw.onboardingComplete),
   };
 }

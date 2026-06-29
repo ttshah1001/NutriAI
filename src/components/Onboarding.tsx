@@ -8,13 +8,14 @@ import {
   Target,
   User,
 } from "lucide-react";
-import { getActivityLabel, getCalorieRecommendation, isMaintainingWeight } from "@/lib/nutrition";
+import { getActivityLabel, getCalorieRecommendation } from "@/lib/nutrition";
 import { EMPTY_PROFILE } from "@/lib/storage";
 import { feetInchesToInches, inchesToFeetInches } from "@/lib/units";
 import type {
   ActivityLevel,
   CalorieRecommendation,
   Gender,
+  GoalMode,
   UserProfile,
 } from "@/lib/types";
 import { GoalSelector } from "./GoalSelector";
@@ -40,6 +41,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>(
     EMPTY_PROFILE.activityLevel
   );
+  const [goalMode, setGoalMode] = useState<GoalMode>(EMPTY_PROFILE.goalMode);
   const [lbsPerWeek, setLbsPerWeek] = useState(EMPTY_PROFILE.lbsPerWeek);
 
   const draftProfile = useMemo(
@@ -49,10 +51,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       age,
       gender,
       activityLevel,
+      goalMode,
       lbsPerWeek,
       onboardingComplete: false,
     }),
-    [feet, inches, weightLbs, age, gender, activityLevel, lbsPerWeek]
+    [feet, inches, weightLbs, age, gender, activityLevel, goalMode, lbsPerWeek]
   );
 
   const recommendation = useMemo(
@@ -221,14 +224,18 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             </h2>
           </div>
           <p className="text-sm text-slate-500">
-            Lose weight with a calorie deficit, or maintain and focus on hitting
-            your macros.
+            Lose weight, maintain and track macros, or bulk up with a calorie
+            surplus.
           </p>
 
           <GoalSelector
+            goalMode={goalMode}
             lbsPerWeek={lbsPerWeek}
             recommendation={recommendation}
-            onChange={setLbsPerWeek}
+            onChange={(mode, lbs) => {
+              setGoalMode(mode);
+              setLbsPerWeek(lbs);
+            }}
           />
 
           <div className="flex gap-2">
@@ -253,7 +260,6 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       {step === "summary" && (
         <GoalSummary
           recommendation={recommendation}
-          lbsPerWeek={lbsPerWeek}
           onBack={() => setStep("goal")}
           onComplete={() =>
             onComplete({ ...draftProfile, onboardingComplete: true })
@@ -266,12 +272,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
 function GoalSummary({
   recommendation,
-  lbsPerWeek,
   onBack,
   onComplete,
 }: {
   recommendation: CalorieRecommendation;
-  lbsPerWeek: number;
   onBack: () => void;
   onComplete: () => void;
 }) {
@@ -281,6 +285,28 @@ function GoalSummary({
     { label: "Fat", value: recommendation.fat, color: "text-amber-600" },
     { label: "Fiber", value: recommendation.fiber, color: "text-emerald-600" },
   ];
+
+  const goalBadge = () => {
+    switch (recommendation.goalMode) {
+      case "maintain":
+        return "Maintain weight · focus on macros";
+      case "bulk":
+        return `Gain ${recommendation.lbsPerWeek} lb/week · ${recommendation.surplus} kcal surplus`;
+      default:
+        return `Lose ${recommendation.lbsPerWeek} lb/week · ${recommendation.deficit} kcal deficit`;
+    }
+  };
+
+  const goalNote = () => {
+    switch (recommendation.goalMode) {
+      case "maintain":
+        return `Based on your stats, ${recommendation.targetCalories} kcal/day keeps you at maintenance while you track macros.`;
+      case "bulk":
+        return `Protein is set high at ${recommendation.protein}g to support muscle growth during your bulk.`;
+      default:
+        return `Protein is set at ${recommendation.protein}g to help preserve muscle while you lose weight.`;
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -294,15 +320,9 @@ function GoalSummary({
             {recommendation.targetCalories}
           </p>
           <p className="text-brand-100">calories per day</p>
-          {isMaintainingWeight(lbsPerWeek) ? (
-            <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
-              Maintain weight · focus on macros
-            </p>
-          ) : (
-            <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
-              Lose {lbsPerWeek} lb/week · {recommendation.deficit} kcal deficit
-            </p>
-          )}
+          <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
+            {goalBadge()}
+          </p>
         </div>
       </div>
 
@@ -320,9 +340,7 @@ function GoalSummary({
           ))}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-slate-500">
-          {isMaintainingWeight(lbsPerWeek)
-            ? `Based on your stats, ${recommendation.targetCalories} kcal/day keeps you at maintenance while you track macros.`
-            : `Protein is set at ${recommendation.protein}g to help preserve muscle while you lose weight.`}
+          {goalNote()}
         </p>
       </div>
 

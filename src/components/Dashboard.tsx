@@ -1,8 +1,7 @@
 "use client";
 
-import { Flame, Scale, Sparkles, TrendingDown } from "lucide-react";
+import { Dumbbell, Flame, Scale, Sparkles, TrendingDown } from "lucide-react";
 import type { CalorieRecommendation, FoodEntry, NutritionValues } from "@/lib/types";
-import { isMaintainingWeight } from "@/lib/nutrition";
 import { MACRO_CONFIG } from "@/hooks/useTracker";
 import { MacroRing } from "./MacroRing";
 import { MacroBar } from "./MacroBar";
@@ -64,10 +63,16 @@ export function Dashboard({
             </div>
           </div>
 
-          {isMaintainingWeight(recommendation.lbsPerWeek) ? (
+          {recommendation.goalMode === "maintain" ? (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-brand-50 backdrop-blur-sm">
               <Scale className="h-3.5 w-3.5" />
               Maintain weight · track macros
+            </div>
+          ) : recommendation.goalMode === "bulk" ? (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-brand-50 backdrop-blur-sm">
+              <Dumbbell className="h-3.5 w-3.5" />
+              Gain {recommendation.lbsPerWeek} lb/week ·{" "}
+              {recommendation.surplus} kcal surplus
             </div>
           ) : (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-brand-50 backdrop-blur-sm">
