@@ -33,7 +33,12 @@ export function calculateTDEE(profile: UserProfile): number {
 }
 
 export function getDailyDeficit(lbsPerWeek: number): number {
+  if (lbsPerWeek <= 0) return 0;
   return Math.round((lbsPerWeek * CALORIES_PER_LB) / 7);
+}
+
+export function isMaintainingWeight(lbsPerWeek: number): boolean {
+  return lbsPerWeek <= 0;
 }
 
 export function getCalorieRecommendation(
@@ -41,8 +46,11 @@ export function getCalorieRecommendation(
 ): CalorieRecommendation {
   const bmr = calculateBMR(profile);
   const tdee = calculateTDEE(profile);
+  const maintaining = isMaintainingWeight(profile.lbsPerWeek);
   const deficit = getDailyDeficit(profile.lbsPerWeek);
-  const targetCalories = Math.max(tdee - deficit, bmr * 1.1);
+  const targetCalories = maintaining
+    ? Math.round(tdee)
+    : Math.max(tdee - deficit, bmr * 1.1);
 
   const proteinPerKg = profile.lbsPerWeek > 0 ? 2.0 : 1.6;
   const protein = Math.round(lbsToKg(profile.weightLbs) * proteinPerKg);

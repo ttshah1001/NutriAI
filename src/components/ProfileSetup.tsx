@@ -2,16 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { Calculator, Save } from "lucide-react";
-import { getActivityLabel, getCalorieRecommendation } from "@/lib/nutrition";
+import {
+  getActivityLabel,
+  getCalorieRecommendation,
+  isMaintainingWeight,
+} from "@/lib/nutrition";
 import { feetInchesToInches, inchesToFeetInches } from "@/lib/units";
 import type { ActivityLevel, Gender, UserProfile } from "@/lib/types";
+import { GoalSelector } from "./GoalSelector";
+import { NumberField } from "./NumberField";
 
 interface ProfileSetupProps {
   profile: UserProfile;
   onSave: (profile: UserProfile) => void;
 }
-
-const LBS_OPTIONS = [0.5, 1, 1.5, 2];
 
 export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
   const { feet: initFeet, inches: initInches } = inchesToFeetInches(
@@ -45,19 +49,63 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
     [draftProfile]
   );
 
+  const maintaining = isMaintainingWeight(lbsPerWeek);
+
   const handleSave = () => {
     onSave(draftProfile);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const targetStats = [
+    {
+      label: "Calories",
+      value: recommendation.targetCalories,
+      unit: "kcal",
+      color: "text-accent-600",
+    },
+    {
+      label: "Protein",
+      value: recommendation.protein,
+      unit: "g",
+      color: "text-sky-600",
+    },
+    {
+      label: "Carbs",
+      value: recommendation.carbs,
+      unit: "g",
+      color: "text-violet-600",
+    },
+    {
+      label: "Fat",
+      value: recommendation.fat,
+      unit: "g",
+      color: "text-amber-600",
+    },
+    {
+      label: "Fiber",
+      value: recommendation.fiber,
+      unit: "g",
+      color: "text-emerald-600",
+    },
+    ...(maintaining
+      ? []
+      : [
+          {
+            label: "Deficit",
+            value: recommendation.deficit,
+            unit: "kcal",
+            color: "text-brand-600",
+          },
+        ]),
+  ];
+
   return (
     <div className="space-y-5">
       <div className="card p-6">
         <h2 className="page-title">Your Profile</h2>
         <p className="page-desc mt-1">
-          Update your stats or weight loss goal. Targets recalculate
-          automatically.
+          Update your stats or goal. Targets recalculate automatically.
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -75,13 +123,11 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
 
           <div>
             <label className="label">Age</label>
-            <input
-              type="number"
+            <NumberField
               value={age}
-              onChange={(e) => setAge(Number(e.target.value))}
+              onChange={setAge}
               min={15}
               max={100}
-              className="input"
             />
           </div>
 
@@ -89,24 +135,22 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
             <label className="label">Height</label>
             <div className="flex gap-2">
               <div className="flex flex-1 items-center gap-1.5">
-                <input
-                  type="number"
+                <NumberField
                   value={feet}
-                  onChange={(e) => setFeet(Number(e.target.value))}
+                  onChange={setFeet}
                   min={4}
                   max={7}
-                  className="input"
+                  aria-label="Height feet"
                 />
                 <span className="text-sm text-slate-400">ft</span>
               </div>
               <div className="flex flex-1 items-center gap-1.5">
-                <input
-                  type="number"
+                <NumberField
                   value={inches}
-                  onChange={(e) => setInches(Number(e.target.value))}
+                  onChange={setInches}
                   min={0}
                   max={11}
-                  className="input"
+                  aria-label="Height inches"
                 />
                 <span className="text-sm text-slate-400">in</span>
               </div>
@@ -115,13 +159,11 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
 
           <div>
             <label className="label">Weight (lbs)</label>
-            <input
-              type="number"
+            <NumberField
               value={weightLbs}
-              onChange={(e) => setWeightLbs(Number(e.target.value))}
+              onChange={setWeightLbs}
               min={80}
               max={500}
-              className="input"
             />
           </div>
 
@@ -151,19 +193,13 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="label">Weight Loss Goal (lbs/week)</label>
-            <div className="grid grid-cols-4 gap-2">
-              {LBS_OPTIONS.map((lbs) => (
-                <button
-                  key={lbs}
-                  type="button"
-                  onClick={() => setLbsPerWeek(lbs)}
-                  className={`chip py-2.5 text-sm ${lbsPerWeek === lbs ? "chip-active" : ""}`}
-                >
-                  {lbs} lb
-                </button>
-              ))}
-            </div>
+            <label className="label">Your Goal</label>
+            <GoalSelector
+              lbsPerWeek={lbsPerWeek}
+              recommendation={recommendation}
+              onChange={setLbsPerWeek}
+              compact
+            />
           </div>
         </div>
 
@@ -181,44 +217,7 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3">
-          {[
-            {
-              label: "Calories",
-              value: recommendation.targetCalories,
-              unit: "kcal",
-              color: "text-accent-600",
-            },
-            {
-              label: "Protein",
-              value: recommendation.protein,
-              unit: "g",
-              color: "text-sky-600",
-            },
-            {
-              label: "Carbs",
-              value: recommendation.carbs,
-              unit: "g",
-              color: "text-violet-600",
-            },
-            {
-              label: "Fat",
-              value: recommendation.fat,
-              unit: "g",
-              color: "text-amber-600",
-            },
-            {
-              label: "Fiber",
-              value: recommendation.fiber,
-              unit: "g",
-              color: "text-emerald-600",
-            },
-            {
-              label: "Deficit",
-              value: recommendation.deficit,
-              unit: "kcal",
-              color: "text-brand-600",
-            },
-          ].map(({ label, value, unit, color }) => (
+          {targetStats.map(({ label, value, unit, color }) => (
             <div key={label} className="card-muted p-3 text-center">
               <p className="text-xs font-semibold text-slate-400">{label}</p>
               <p className={`text-lg font-bold ${color}`}>
@@ -231,8 +230,24 @@ export function ProfileSetup({ profile, onSave }: ProfileSetupProps) {
           ))}
         </div>
         <p className="border-t border-slate-100 px-5 py-4 text-sm text-slate-500">
-          Eating <strong className="text-brand-700">{recommendation.targetCalories} kcal/day</strong> supports
-          losing <strong className="text-brand-700">{lbsPerWeek} lb/week</strong>.
+          {maintaining ? (
+            <>
+              Eating{" "}
+              <strong className="text-brand-700">
+                {recommendation.targetCalories} kcal/day
+              </strong>{" "}
+              maintains your weight while you track macros.
+            </>
+          ) : (
+            <>
+              Eating{" "}
+              <strong className="text-brand-700">
+                {recommendation.targetCalories} kcal/day
+              </strong>{" "}
+              supports losing{" "}
+              <strong className="text-brand-700">{lbsPerWeek} lb/week</strong>.
+            </>
+          )}
         </p>
       </div>
     </div>

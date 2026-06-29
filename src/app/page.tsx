@@ -9,6 +9,7 @@ import {
   Wheat,
 } from "lucide-react";
 import { useTracker } from "@/hooks/useTracker";
+import { isMaintainingWeight } from "@/lib/nutrition";
 import { Dashboard } from "@/components/Dashboard";
 import { Onboarding } from "@/components/Onboarding";
 import { ProfileSetup } from "@/components/ProfileSetup";
@@ -85,7 +86,9 @@ export default function Home() {
           </div>
           <div className="rounded-2xl bg-brand-50 px-3 py-2 text-right ring-1 ring-brand-100">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">
-              Daily Goal
+              {isMaintainingWeight(recommendation.lbsPerWeek)
+                ? "Maintenance"
+                : "Daily Goal"}
             </p>
             <p className="text-sm font-bold text-brand-800">
               {recommendation.targetCalories}{" "}

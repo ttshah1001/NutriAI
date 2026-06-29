@@ -8,7 +8,7 @@ import {
   Target,
   User,
 } from "lucide-react";
-import { getActivityLabel, getCalorieRecommendation } from "@/lib/nutrition";
+import { getActivityLabel, getCalorieRecommendation, isMaintainingWeight } from "@/lib/nutrition";
 import { EMPTY_PROFILE } from "@/lib/storage";
 import { feetInchesToInches, inchesToFeetInches } from "@/lib/units";
 import type {
@@ -17,6 +17,8 @@ import type {
   Gender,
   UserProfile,
 } from "@/lib/types";
+import { GoalSelector } from "./GoalSelector";
+import { NumberField } from "./NumberField";
 
 interface OnboardingProps {
   onComplete: (profile: UserProfile) => void;
@@ -24,8 +26,7 @@ interface OnboardingProps {
 
 type Step = "about" | "goal" | "summary";
 
-const LBS_OPTIONS = [0.5, 1, 1.5, 2];
-const STEPS = ["About You", "Weight Goal", "Your Targets"];
+const STEPS = ["About You", "Your Goal", "Your Targets"];
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState<Step>("about");
@@ -129,13 +130,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
             <div>
               <label className="label">Age</label>
-              <input
-                type="number"
+              <NumberField
                 value={age}
-                onChange={(e) => setAge(Number(e.target.value))}
+                onChange={setAge}
                 min={15}
                 max={100}
-                className="input"
               />
             </div>
 
@@ -143,24 +142,22 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <label className="label">Height</label>
               <div className="flex gap-2">
                 <div className="flex flex-1 items-center gap-1.5">
-                  <input
-                    type="number"
+                  <NumberField
                     value={feet}
-                    onChange={(e) => setFeet(Number(e.target.value))}
+                    onChange={setFeet}
                     min={4}
                     max={7}
-                    className="input"
+                    aria-label="Height feet"
                   />
                   <span className="text-sm text-slate-400">ft</span>
                 </div>
                 <div className="flex flex-1 items-center gap-1.5">
-                  <input
-                    type="number"
+                  <NumberField
                     value={inches}
-                    onChange={(e) => setInches(Number(e.target.value))}
+                    onChange={setInches}
                     min={0}
                     max={11}
-                    className="input"
+                    aria-label="Height inches"
                   />
                   <span className="text-sm text-slate-400">in</span>
                 </div>
@@ -169,13 +166,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
             <div>
               <label className="label">Weight (lbs)</label>
-              <input
-                type="number"
+              <NumberField
                 value={weightLbs}
-                onChange={(e) => setWeightLbs(Number(e.target.value))}
+                onChange={setWeightLbs}
                 min={80}
                 max={500}
-                className="input"
               />
             </div>
 
@@ -222,36 +217,19 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <Target className="h-5 w-5 text-accent-600" />
             </div>
             <h2 className="text-lg font-bold text-slate-900">
-              How much to lose per week?
+              What&apos;s your goal?
             </h2>
           </div>
           <p className="text-sm text-slate-500">
-            A safe rate is 0.5–2 lbs/week. We&apos;ll set your calorie target
-            from this.
+            Lose weight with a calorie deficit, or maintain and focus on hitting
+            your macros.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            {LBS_OPTIONS.map((lbs) => (
-              <button
-                key={lbs}
-                type="button"
-                onClick={() => setLbsPerWeek(lbs)}
-                className={`chip ${lbsPerWeek === lbs ? "chip-active" : ""}`}
-              >
-                <p className="text-3xl font-bold">{lbs}</p>
-                <p className="mt-0.5 text-xs text-slate-500">lbs / week</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="card-muted p-4 text-sm text-slate-600">
-            At <strong className="text-brand-700">{lbsPerWeek} lb/week</strong>
-            , you need a{" "}
-            <strong className="text-brand-700">
-              {recommendation.deficit} kcal
-            </strong>{" "}
-            daily deficit.
-          </div>
+          <GoalSelector
+            lbsPerWeek={lbsPerWeek}
+            recommendation={recommendation}
+            onChange={setLbsPerWeek}
+          />
 
           <div className="flex gap-2">
             <button
@@ -316,9 +294,15 @@ function GoalSummary({
             {recommendation.targetCalories}
           </p>
           <p className="text-brand-100">calories per day</p>
-          <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
-            Lose {lbsPerWeek} lb/week · {recommendation.deficit} kcal deficit
-          </p>
+          {isMaintainingWeight(lbsPerWeek) ? (
+            <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
+              Maintain weight · focus on macros
+            </p>
+          ) : (
+            <p className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-brand-50">
+              Lose {lbsPerWeek} lb/week · {recommendation.deficit} kcal deficit
+            </p>
+          )}
         </div>
       </div>
 
@@ -336,8 +320,9 @@ function GoalSummary({
           ))}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-slate-500">
-          Protein is set at {recommendation.protein}g to help preserve muscle
-          while you lose weight.
+          {isMaintainingWeight(lbsPerWeek)
+            ? `Based on your stats, ${recommendation.targetCalories} kcal/day keeps you at maintenance while you track macros.`
+            : `Protein is set at ${recommendation.protein}g to help preserve muscle while you lose weight.`}
         </p>
       </div>
 
