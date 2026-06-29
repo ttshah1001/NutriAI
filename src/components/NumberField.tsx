@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface NumberFieldProps {
   value: number;
@@ -27,9 +27,12 @@ export function NumberField({
   "aria-label": ariaLabel,
 }: NumberFieldProps) {
   const [text, setText] = useState(String(value));
+  const isFocused = useRef(false);
 
   useEffect(() => {
-    setText(String(value));
+    if (!isFocused.current) {
+      setText(String(value));
+    }
   }, [value]);
 
   const clamp = (num: number): number => {
@@ -39,14 +42,14 @@ export function NumberField({
     return result;
   };
 
-  const commit = (raw: string) => {
-    if (raw === "") {
-      const fallback = clamp(value || min || 0);
+  const commit = () => {
+    if (text === "") {
+      const fallback = clamp(min ?? value ?? 0);
       setText(String(fallback));
       onChange(fallback);
       return;
     }
-    const num = parseInt(raw, 10);
+    const num = parseInt(text, 10);
     if (isNaN(num)) {
       setText(String(value));
       return;
@@ -58,15 +61,13 @@ export function NumberField({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const normalized = normalizeDigits(e.target.value);
+
+    if (normalized !== "" && max !== undefined) {
+      const num = parseInt(normalized, 10);
+      if (!isNaN(num) && num > max) return;
+    }
+
     setText(normalized);
-
-    if (normalized === "") return;
-
-    const num = parseInt(normalized, 10);
-    if (isNaN(num)) return;
-    if (max !== undefined && num > max) return;
-
-    onChange(clamp(num));
   };
 
   return (
@@ -76,7 +77,13 @@ export function NumberField({
       pattern="[0-9]*"
       value={text}
       onChange={handleChange}
-      onBlur={() => commit(text)}
+      onFocus={() => {
+        isFocused.current = true;
+      }}
+      onBlur={() => {
+        isFocused.current = false;
+        commit();
+      }}
       className={className}
       placeholder={placeholder}
       aria-label={ariaLabel}
